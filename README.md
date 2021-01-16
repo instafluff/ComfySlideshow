@@ -1,0 +1,2 @@
+# ComfySlideshow
+Slideshow Overlay
