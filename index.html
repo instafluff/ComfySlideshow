@@ -85,7 +85,7 @@
             const maxPages = parseInt( params.get( "max" ) || 5 );
             let imageData = data.user.edge_owner_to_timeline_media;
             let images = imageData.edges.map( x => x.node );
-            await delay( 1000 );
+            await delay( 3000 );
             for( let i = 0; imageData.page_info.has_next_page && i < maxPages; i++ ) {
                 let nextData = await fetch( `https://www.instagram.com/graphql/query/?query_hash=${query_hash}&id=${userId}&first=${limitPerPage}&after=${imageData.page_info.end_cursor}` )
                     .then( r => r.json() );
@@ -93,7 +93,7 @@
                 imageData.edges.forEach( x => {
                     images.push( x.node );
                 });
-                await delay( 2000 );
+                await delay( 3000 );
             }
 
             shuffleArray( images );
