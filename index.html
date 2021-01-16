@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <title>Comfy Slideshow - Slideshow Overlay</title>
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-135113520-1"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+			gtag('config', 'UA-135113520-1');
+		</script>
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+        <style>
+        body {
+          margin: 0;
+        }
+
+        .img-container {
+          height: 100vh;
+          overflow: hidden;
+          position: relative;
+          width: 100vw;
+        }
+
+        .img-container img {
+          height: 100%;
+          left: 0;
+          object-fit: cover;
+          object-position: center;
+          opacity: 0;
+          position: absolute;
+          top: 0;
+          width: 100%;
+          z-index: -1;
+        }
+
+        .img-container img.next {
+          opacity: 1;
+          z-index: 1;
+        }
+
+        .img-container img.prev {
+          opacity: 1;
+          z-index: 2;
+        }
+
+        .img-container img.fade-out {
+          opacity: 0;
+          transition: visibility 0s .5s, opacity .5s linear;
+          visibility: hidden;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="instagram-image" class="img-container" data-slideshow></div>
+        <script>
+        function shuffleArray( array ) {
+            for( let i = array.length - 1; i > 0; i-- ) {
+                const j = Math.floor( Math.random() * ( i + 1 ) );
+                [ array[ i ], array[ j ] ] = [ array[ j ], array[ i ] ];
+            }
+        }
+
+        function getRandomInt( num ) {
+            return Math.floor( num * Math.random() );
+        }
+
+        const params = new URLSearchParams( location.search );
+
+        ( async () => {
+            const query_hash = "003056d32c2554def87228bc3fd9668a";
+            let html = await fetch( `https://www.instagram.com/${params.get( "user" )}/` ).then( r => r.text() );
+            let config = JSON.parse( html.split( "window._sharedData = " )[ 1 ].split( ";<\/script>" )[ 0 ] );
+            let data = config.entry_data.ProfilePage[ 0 ].graphql;
+            // console.log( config.entry_data.ProfilePage[ 0 ].graphql );
+            let userId = data.user.id;
+            const count = data.user.edge_owner_to_timeline_media.count;
+            const limitPerPage = 50;
+            const maxPages = parseInt( params.get( "max" ) || 5 );
+            let imageData = data.user.edge_owner_to_timeline_media;
+            let images = imageData.edges.map( x => x.node );
+            for( let i = 0; imageData.page_info.has_next_page && i < maxPages; i++ ) {
+                let nextData = await fetch( `https://www.instagram.com/graphql/query/?query_hash=${query_hash}&id=${userId}&first=${limitPerPage}&after=${imageData.page_info.end_cursor}` )
+                    .then( r => r.json() );
+                imageData = nextData.data.user.edge_owner_to_timeline_media;
+                imageData.edges.forEach( x => {
+                    images.push( x.node );
+                });
+            }
+
+            shuffleArray( images );
+            images.forEach( image => {
+                let img = document.createElement( "img" );
+                img.src = image.thumbnail_src;
+                document.getElementById( "instagram-image" ).appendChild( img );
+            });
+
+            new Slideshow;
+        })();
+
+        class Slideshow {
+          constructor() {
+            this.initSlides();
+            this.initSlideshow();
+          }
+
+          // Set a `data-slide` index on each slide for easier slide control.
+          initSlides() {
+            this.container = $('[data-slideshow]');
+            this.slides = this.container.find('img');
+            this.slides.each((idx, slide) => $(slide).attr('data-slide', idx));
+          }
+
+          // Pseudo-preload images so the slideshow doesn't start before all the images
+          // are available.
+          initSlideshow() {
+            this.imagesLoaded = 0;
+            this.currentIndex = 0;
+            this.setNextSlide();
+            this.slides.each((idx, slide) => {
+              $('<img>').on('load', $.proxy(this.loadImage, this)).attr('src', $(slide).attr('src'));
+            });
+          }
+
+          // When one image has loaded, check to see if all images have loaded, and if
+          // so, start the slideshow.
+          loadImage() {
+            this.imagesLoaded++;
+            if (this.imagesLoaded >= this.slides.length) { this.playSlideshow() }
+          }
+
+          // Start the slideshow.
+          playSlideshow() {
+            this.slideshow = window.setInterval(() => { this.performSlide() }, parseInt( params.get( "interval" ) || 3500 ) );
+          }
+
+          // 1. Previous slide is unset.
+          // 2. What was the next slide becomes the previous slide.
+          // 3. New index and appropriate next slide are set.
+          // 4. Fade out action.
+          performSlide() {
+            if (this.prevSlide) { this.prevSlide.removeClass('prev fade-out') }
+
+            this.nextSlide.removeClass('next');
+            this.prevSlide = this.nextSlide;
+            this.prevSlide.addClass('prev');
+
+            this.currentIndex++;
+            if (this.currentIndex >= this.slides.length) { this.currentIndex = 0 }
+
+            this.setNextSlide();
+
+            this.prevSlide.addClass('fade-out');
+          }
+
+          setNextSlide() {
+            this.nextSlide = this.container.find(`[data-slide="${this.currentIndex}"]`).first();
+            this.nextSlide.addClass('next');
+          }
+        }
+        </script>
+    </body>
+</html>
